@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
-# XiaoMu FX feed bot: builds feed/xiaomu_feed.txt as a rolling agenda.
+# XiaoMu FX feed bot v1.1: builds feed/xiaomu_feed.txt as a rolling agenda.
 # - Previews come from the public ForexFactory calendar mirror
 #   (faireconomy): schedule + forecast + previous.
-# - Actuals come from FRED public CSV endpoints (no API key).
+# - Actuals come from FRED public CSV endpoints (no API key) for the
+#   USD core releases; other tracked events are preview-only.
+# - Coverage (user, 2026-11-13): mainly USD / JPY / GBP movers, plus
+#   other major FX events (ECB). Commentary: none, facts only.
 # - House rules (set by the user): entries are timestamped in JST;
 #   previews carry the EVENT time; result entries carry their posting
 #   time; every entry disappears ~5 minutes after its own time
 #   (a result lives 5 minutes from posting; a preview is replaced by
 #   its result, or vanishes 5 minutes after the event).
-# - No commentary: facts only.
 # State lives in tools/feed_state.json so runs are idempotent.
 import json
 import os
 import sys
 import urllib.request
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 JST = ZoneInfo("Asia/Tokyo")
@@ -66,8 +68,6 @@ def actual_claims(ev_dt):
     if not obs:
         return None
     d, v = obs[-1]
-    # release Thu; obs is the Sat before (event_date - 5d). Accept the
-    # latest obs if its date is within 6 days before the event date.
     delta = (ev_dt.date() - datetime.fromisoformat(d).date()).days
     if 0 <= delta <= 6:
         return fmt_k(v)
@@ -75,7 +75,6 @@ def actual_claims(ev_dt):
 
 
 def _fred_mom(series_id, target_month):
-    """MoM % change of the observation dated target_month (YYYY-MM-01)."""
     obs = dict(fred_series(series_id))
     cur = obs.get(target_month)
     y, m = int(target_month[:4]), int(target_month[5:7])
@@ -141,33 +140,56 @@ def actual_retail(ev_dt):
     return _fred_mom("RSXFS", _prev_month_first(ev_dt))
 
 
-# slug, title matcher (exact unless prefix '~'), country,
-# preview title, result title, event name for details, actual fetcher
+# slug, title matcher (exact unless prefix '~' = substring), country,
+# preview title, result title, event name for details, actual fetcher,
+# style ("release" | "speech"), core-sibling calendar title (or None)
 TRACKED = [
-    ("claims", "Unemployment Claims", "USD", "美国初请公布", "初请失业金结果", "美国初请失业金", actual_claims),
-    ("ppi", "PPI m/m", "USD", "美国PPI公布", "美国PPI结果", "美国PPI(生产者物价)环比", actual_ppi),
-    ("cpi", "CPI m/m", "USD", "美国CPI公布", "美国CPI结果", "美国CPI(消费者物价)环比", actual_cpi),
-    ("nfp", "Non-Farm Employment Change", "USD", "美国非农公布", "非农就业结果", "美国非农就业人数", actual_nfp),
-    ("unrate", "Unemployment Rate", "USD", "美国失业率公布", "美国失业率结果", "美国失业率", actual_unrate),
-    ("fomc", "Federal Funds Rate", "USD", "美联储利率决议", "美联储利率决议", "美联储利率决议(联邦基金利率上限)", actual_fomc),
-    ("gdp", "~GDP q/q", "USD", "美国GDP公布", "美国GDP结果", "美国GDP环比年率", actual_gdp),
-    ("retail", "Retail Sales m/m", "USD", "美国零售销售公布", "美国零售销售结果", "美国零售销售环比", actual_retail),
-    ("boj", "BOJ Policy Rate", "JPY", "日本央行利率决议", "日本央行利率决议", "日本央行政策利率", None),
-    ("ism_mfg", "ISM Manufacturing PMI", "USD", "美国ISM制造业PMI公布", "美国ISM制造业PMI公布", "美国ISM制造业PMI", None),
-    ("ism_svc", "ISM Services PMI", "USD", "美国ISM服务业PMI公布", "美国ISM服务业PMI公布", "美国ISM服务业PMI", None),
+    # --- USD core, with FRED actuals ---
+    ("claims", "Unemployment Claims", "USD", "美国初请公布", "初请失业金结果", "美国初请失业金", actual_claims, "release", None),
+    ("ppi", "PPI m/m", "USD", "美国PPI公布", "美国PPI结果", "美国PPI(生产者物价)环比", actual_ppi, "release", "Core PPI m/m"),
+    ("cpi", "CPI m/m", "USD", "美国CPI公布", "美国CPI结果", "美国CPI(消费者物价)环比", actual_cpi, "release", "Core CPI m/m"),
+    ("nfp", "Non-Farm Employment Change", "USD", "美国非农公布", "非农就业结果", "美国非农就业人数", actual_nfp, "release", None),
+    ("unrate", "Unemployment Rate", "USD", "美国失业率公布", "美国失业率结果", "美国失业率", actual_unrate, "release", None),
+    ("fomc", "Federal Funds Rate", "USD", "美联储利率决议", "美联储利率决议", "美联储利率决议(联邦基金利率上限)", actual_fomc, "release", None),
+    ("gdp", "~GDP q/q", "USD", "美国GDP公布", "美国GDP结果", "美国GDP环比年率", actual_gdp, "release", None),
+    ("retail", "Retail Sales m/m", "USD", "美国零售销售公布", "美国零售销售结果", "美国零售销售环比", actual_retail, "release", None),
+    # --- USD, preview-only ---
+    ("ism_mfg", "ISM Manufacturing PMI", "USD", "美国ISM制造业PMI公布", "美国ISM制造业PMI公布", "美国ISM制造业PMI", None, "release", None),
+    ("ism_svc", "ISM Services PMI", "USD", "美国ISM服务业PMI公布", "美国ISM服务业PMI公布", "美国ISM服务业PMI", None, "release", None),
+    ("jolts", "JOLTS Job Openings", "USD", "美国JOLTS职位空缺公布", "美国JOLTS职位空缺公布", "美国JOLTS职位空缺", None, "release", None),
+    ("adp", "ADP Non-Farm Employment Change", "USD", "美国ADP就业公布", "美国ADP就业公布", "美国ADP非农就业变化", None, "release", None),
+    ("fomc_minutes", "FOMC Meeting Minutes", "USD", "美联储会议纪要公布", "美联储会议纪要公布", "美联储FOMC会议纪要", None, "release", None),
+    ("powell", "~Powell Speaks", "USD", "美联储主席讲话", "美联储主席讲话", "美联储主席鲍威尔讲话", None, "speech", None),
+    # --- JPY, preview-only ---
+    ("boj", "BOJ Policy Rate", "JPY", "日本央行利率决议", "日本央行利率决议", "日本央行政策利率", None, "release", None),
+    ("gdp_jp", "Prelim GDP q/q", "JPY", "日本GDP公布", "日本GDP公布", "日本GDP环比(初值)", None, "release", None),
+    ("gdp_jp_f", "Final GDP q/q", "JPY", "日本GDP终值公布", "日本GDP终值公布", "日本GDP环比(终值)", None, "release", None),
+    ("tokyo_cpi", "Tokyo Core CPI y/y", "JPY", "东京CPI公布", "东京CPI公布", "东京核心CPI同比", None, "release", None),
+    ("jp_cpi", "National Core CPI y/y", "JPY", "日本CPI公布", "日本CPI公布", "日本全国核心CPI同比", None, "release", None),
+    # --- GBP, preview-only ---
+    ("boe", "Official Bank Rate", "GBP", "英国央行利率决议", "英国央行利率决议", "英国央行政策利率", None, "release", None),
+    ("uk_cpi", "CPI y/y", "GBP", "英国CPI公布", "英国CPI公布", "英国CPI同比", None, "release", None),
+    ("uk_gdp", "Prelim GDP q/q", "GBP", "英国GDP公布", "英国GDP公布", "英国GDP环比(初值)", None, "release", None),
+    ("uk_claims", "Claimant Count Change", "GBP", "英国失业金申请公布", "英国失业金申请公布", "英国申请失业救济人数变化", None, "release", None),
+    ("uk_retail", "Retail Sales m/m", "GBP", "英国零售销售公布", "英国零售销售公布", "英国零售销售环比", None, "release", None),
+    ("bailey", "~Bailey Speaks", "GBP", "英国央行行长讲话", "英国央行行长讲话", "英国央行行长贝利讲话", None, "speech", None),
+    # --- EUR, preview-only ---
+    ("ecb", "Main Refinancing Rate", "EUR", "欧洲央行利率决议", "欧洲央行利率决议", "欧洲央行主要再融资利率", None, "release", None),
+    ("eu_cpi", "CPI y/y", "EUR", "欧元区CPI公布", "欧元区CPI公布", "欧元区CPI同比", None, "release", None),
+    ("lagarde", "~Lagarde Speaks", "EUR", "欧洲央行行长讲话", "欧洲央行行长讲话", "欧洲央行行长拉加德讲话", None, "speech", None),
 ]
 
 
 def match_event(ev):
-    for slug, pat, country, pt, rt, name, fn in TRACKED:
+    for slug, pat, country, pt, rt, name, fn, style, sibling in TRACKED:
         if ev.get("country") != country:
             continue
         title = ev.get("title", "")
         if pat.startswith("~"):
             if pat[1:] in title:
-                return slug, pt, rt, name, fn
+                return slug, pt, rt, name, fn, style, sibling
         elif title == pat:
-            return slug, pt, rt, name, fn
+            return slug, pt, rt, name, fn, style, sibling
     return None
 
 
@@ -208,13 +230,15 @@ def main():
         print("no calendar data; leaving feed untouched", file=sys.stderr)
         return 0
 
-    entries = []  # (ts_jst datetime, title, detail)
+    by_title_date = {(ev.get("title"), ev.get("date")): ev for ev in events}
+
+    entries = []
     new_state = {}
     for ev in events:
         m = match_event(ev)
         if not m:
             continue
-        slug, ptitle, rtitle, ename, fn = m
+        slug, ptitle, rtitle, ename, fn, style, sibling = m
         try:
             ev_dt = datetime.fromisoformat(ev["date"])
         except Exception:
@@ -231,15 +255,31 @@ def main():
             new_state[key] = st
             continue
 
-        if now < ev_jst:
-            detail = fact_line(
+        def preview_detail():
+            if style == "speech":
+                return f"{ev_jst.month}月{ev_jst.day}日 {ev_jst:%H:%M} {ename}。"
+            d = fact_line(
                 f"{ev_jst.month}月{ev_jst.day}日 {ev_jst:%H:%M} {ename}公布",
                 forecast, previous)
-            entries.append((ev_jst, ptitle, detail))
+            if sibling:
+                sib = by_title_date.get((sibling, ev.get("date")))
+                if sib:
+                    sfc = (sib.get("forecast") or "").strip()
+                    sprev = (sib.get("previous") or "").strip()
+                    if sfc or sprev:
+                        clause = "核心"
+                        if sfc:
+                            clause += f"预期{sfc}"
+                        if sprev:
+                            clause += f", 前值{sprev}"
+                        d += clause + "。"
+            return d
+
+        if now < ev_jst:
+            entries.append((ev_jst, ptitle, preview_detail()))
             new_state[key] = {"stage": "preview"}
             continue
 
-        # event time has passed
         if st.get("stage") == "result":
             rts = datetime.fromisoformat(st["result_ts"])
             if now <= rts + timedelta(minutes=5):
@@ -262,10 +302,7 @@ def main():
                               "result_ts": now.isoformat(),
                               "detail": detail}
         elif now <= ev_jst + timedelta(minutes=5):
-            detail = fact_line(
-                f"{ev_jst.month}月{ev_jst.day}日 {ev_jst:%H:%M} {ename}公布",
-                forecast, previous)
-            entries.append((ev_jst, ptitle, detail))
+            entries.append((ev_jst, ptitle, preview_detail()))
             new_state[key] = {"stage": "preview"}
         else:
             new_state[key] = {"stage": "waiting"}
