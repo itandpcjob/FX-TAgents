@@ -1,0 +1,30 @@
+name: feed-bot
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency: feed-bot
+
+jobs:
+  update-feed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build feed
+        run: python3 tools/feed_bot.py
+      - name: Commit if changed
+        run: |
+          git config user.name "feed-bot"
+          git config user.email "feed-bot@users.noreply.github.com"
+          git add feed/xiaomu_feed.txt tools/feed_state.json
+          if git diff --cached --quiet; then
+            echo "no changes"
+          else
+            git commit -m "feed-bot: update agenda"
+            git push
+          fi
