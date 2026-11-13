@@ -1,11 +1,10 @@
 {
- "claims|2026-11-12": {
-  "stage": "done"
- },
  "lagarde|2026-11-12": {
   "stage": "waiting"
  },
  "ppi|2026-11-13": {
-  "stage": "preview"
+  "stage": "result",
+  "result_ts": "2026-11-14T02:22:27.577435+09:00",
+  "detail": "实际+0.6%, 预期0.4%, 前值1.3%。"
  }
 }
