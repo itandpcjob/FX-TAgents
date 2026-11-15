@@ -1,1 +1,38 @@
-{}
+{
+ "gdp_jp|2026-11-15": {
+  "stage": "preview"
+ },
+ "uk_claims|2026-11-17": {
+  "stage": "preview"
+ },
+ "retail|2026-11-17": {
+  "stage": "preview"
+ },
+ "uk_cpi|2026-11-18": {
+  "stage": "preview"
+ },
+ "bailey|2026-11-18": {
+  "stage": "preview"
+ },
+ "lagarde|2026-11-18": {
+  "stage": "preview"
+ },
+ "fomc_minutes|2026-11-18": {
+  "stage": "preview"
+ },
+ "lagarde|2026-11-19": {
+  "stage": "preview"
+ },
+ "claims|2026-11-19": {
+  "stage": "preview"
+ },
+ "jp_cpi|2026-11-19": {
+  "stage": "preview"
+ },
+ "uk_retail|2026-11-20": {
+  "stage": "preview"
+ },
+ "lagarde|2026-11-20": {
+  "stage": "preview"
+ }
+}
