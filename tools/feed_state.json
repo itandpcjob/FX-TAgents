@@ -1,9 +1,11 @@
 {
  "uk_claims|2026-11-17": {
-  "stage": "preview"
+  "stage": "waiting"
  },
  "retail|2026-11-17": {
-  "stage": "preview"
+  "stage": "result",
+  "result_ts": "2026-11-18T01:40:02.345688+09:00",
+  "detail": "实际+0.2%, 预期0.1%, 前值0.8%。"
  },
  "uk_cpi|2026-11-18": {
   "stage": "preview"
