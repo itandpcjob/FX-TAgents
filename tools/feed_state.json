@@ -1,12 +1,6 @@
 {
- "uk_claims|2026-11-17": {
-  "stage": "waiting"
- },
- "retail|2026-11-17": {
-  "stage": "done"
- },
  "uk_cpi|2026-11-18": {
-  "stage": "preview"
+  "stage": "waiting"
  },
  "bailey|2026-11-18": {
   "stage": "preview"
