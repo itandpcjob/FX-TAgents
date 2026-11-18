@@ -3,13 +3,13 @@
   "stage": "waiting"
  },
  "bailey|2026-11-18": {
-  "stage": "preview"
+  "stage": "waiting"
  },
  "lagarde|2026-11-18": {
-  "stage": "preview"
+  "stage": "waiting"
  },
  "fomc_minutes|2026-11-18": {
-  "stage": "preview"
+  "stage": "waiting"
  },
  "lagarde|2026-11-19": {
   "stage": "preview"
