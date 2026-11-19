@@ -1,18 +1,11 @@
 {
- "lagarde|2026-11-18": {
-  "stage": "waiting"
- },
- "bailey|2026-11-18": {
-  "stage": "waiting"
- },
- "fomc_minutes|2026-11-18": {
-  "stage": "waiting"
- },
  "lagarde|2026-11-19": {
-  "stage": "preview"
+  "stage": "waiting"
  },
  "claims|2026-11-19": {
-  "stage": "preview"
+  "stage": "result",
+  "result_ts": "2026-11-20T04:20:07.045017+09:00",
+  "detail": "实际203K, 预期198K, 前值200K。"
  },
  "jp_cpi|2026-11-19": {
   "stage": "preview"
