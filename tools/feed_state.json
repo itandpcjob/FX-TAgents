@@ -1,1 +1,11 @@
-{}
+{
+ "gdp|2026-11-25": {
+  "stage": "preview"
+ },
+ "claims|2026-11-25": {
+  "stage": "preview"
+ },
+ "tokyo_cpi|2026-11-26": {
+  "stage": "preview"
+ }
+}
