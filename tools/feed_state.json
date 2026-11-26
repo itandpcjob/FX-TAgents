@@ -1,10 +1,4 @@
 {
- "gdp|2026-11-25": {
-  "stage": "waiting"
- },
- "claims|2026-11-25": {
-  "stage": "waiting"
- },
  "tokyo_cpi|2026-11-26": {
   "stage": "preview"
  }
